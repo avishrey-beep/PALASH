@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+.venv-1/
+venv/
+env/
+
+# Python testing/cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment/secrets
+.env
+.env.*
+!.env.example
+
+# Databases / local runtime data
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+
+# Android / iOS build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+ios/Pods/
+ios/build/
+
+# Expo / temporary scaffolding
+.expo_scaffold/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials / certificates
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# PALASH runtime/generated storage
+storage/audio/
+storage/exports/
+storage/uploads/
+storage/packs/
+storage/models/
+
+# Keep storage directory structure
+!storage/.gitkeep

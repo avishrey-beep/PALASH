@@ -1,0 +1,30 @@
+{
+  "status": "ABORTED_NO_TARGET_LANGUAGE",
+  "model_id": "facebook/nllb-200-distilled-600M",
+  "model_license": "cc-by-nc-4.0 (NON-COMMERCIAL; research/eval only)",
+  "device": "cpu",
+  "torch_version": "2.14.0+cpu",
+  "dtype": "float32",
+  "measurement_host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "python": "3.14.6",
+    "logical_cpus": 16,
+    "total_ram_gb": 25.4,
+    "IMPORTANT": "These latencies are MEASURED on this x86-64 development host, NOT on the 2 GB Android target. They are an upper bound on quality and a LOWER bound on latency. Android numbers remain NOT MEASURED."
+  },
+  "tokenizer_has_sat_olck": false,
+  "tokenizer_has_hoc": false,
+  "tokenizer_has_unr": false,
+  "model_load_seconds": null,
+  "rss_after_load_mb": null,
+  "rss_peak_mb": null,
+  "num_sentences": 0,
+  "latency_ms": {},
+  "output_validity": {},
+  "round_trip": {},
+  "sentences": [],
+  "notes": [
+    "tokenizer language tokens matching sat_/hoc_/unr_: ['sat_Beng']"
+  ]
+}

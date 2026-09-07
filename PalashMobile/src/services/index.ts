@@ -1,0 +1,15 @@
+export { authService } from './authService';
+export type { AuthResult } from './authService';
+export { translationService, configureTranslationProvider, getActiveTranslationProvider } from './translationService';
+export { voiceService, configureVoiceProvider, getActiveVoiceProvider } from './voiceService';
+export { curriculumService } from './curriculumService';
+export { lessonService } from './lessonService';
+export { worksheetService } from './worksheetService';
+export type { WorksheetInput } from './worksheetService';
+export { activityService } from './activityService';
+export { offlineCacheService } from './offlineCacheService';
+export { syncService } from './syncService';
+export type { SyncStatus } from './syncService';
+export { storageService, STORAGE_KEYS } from './storageService';
+export { UNAVAILABLE_MESSAGE } from './providers/mockTranslationProvider';
+export type { TranslationProvider, VoiceProvider } from './types';
