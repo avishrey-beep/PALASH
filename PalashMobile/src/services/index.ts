@@ -13,3 +13,4 @@ export type { SyncStatus } from './syncService';
 export { storageService, STORAGE_KEYS } from './storageService';
 export { UNAVAILABLE_MESSAGE } from './providers/mockTranslationProvider';
 export type { TranslationProvider, VoiceProvider } from './types';
+export { tokenStore, API_BASE_URL, ApiError } from './apiClient';

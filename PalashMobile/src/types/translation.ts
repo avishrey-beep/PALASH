@@ -28,6 +28,7 @@ export type TranslationOutcome = 'SUCCESS' | 'CACHED' | 'UNAVAILABLE' | 'ERROR';
 export type TranslationSource =
   | 'DEMO_DICTIONARY'
   | 'CACHE'
+  | 'BACKEND'
   | 'NEURAL_MODEL'
   | 'NONE';
 

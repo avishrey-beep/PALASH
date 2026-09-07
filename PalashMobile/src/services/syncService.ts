@@ -37,14 +37,24 @@ export const syncService = {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS);
     try {
-      // Lightweight, CORS-friendly, no-body endpoint.
-      await fetch('https://clients3.google.com/generate_204', {
+      // Try the backend health endpoint first (confirms the server is reachable).
+      const { API_BASE_URL } = await import('./apiClient');
+      await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
         signal: controller.signal,
       });
       return true;
     } catch {
-      return false;
+      // Fallback: generic internet check.
+      try {
+        await fetch('https://clients3.google.com/generate_204', {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        return true;
+      } catch {
+        return false;
+      }
     } finally {
       clearTimeout(timer);
     }
