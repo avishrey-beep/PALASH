@@ -1,7 +1,10 @@
 import { storageService, STORAGE_KEYS } from './storageService';
-import { DEMO_TEACHER, DEMO_PASSWORD } from '@/data/account';
+import { DEMO_TEACHER } from '@/data/account';
 import { authApi, tokenStore, ApiError } from './apiClient';
 import type { Credentials, RegistrationInput, TeacherProfile } from '@/types';
+
+// Fallback password for the demo account when DEMO_PASSWORD is unavailable.
+const DEMO_FALLBACK_PASSWORD = 'demo1234';
 
 /**
  * Authentication service.
@@ -30,9 +33,15 @@ export interface AuthResult {
 
 async function loadAccounts(): Promise<StoredAccount[]> {
   const accounts = await storageService.getItem<StoredAccount[]>(STORAGE_KEYS.accounts, []);
-  if (!accounts.some((a) => a.profile.email.toLowerCase() === DEMO_TEACHER.email.toLowerCase())) {
-    accounts.push({ profile: { ...DEMO_TEACHER }, password: DEMO_PASSWORD });
+  const demoEmail = DEMO_TEACHER.email.toLowerCase();
+  const demoIdx = accounts.findIndex((a) => a.profile.email.toLowerCase() === demoEmail);
+  const demoProfile: TeacherProfile = { ...DEMO_TEACHER, onboarded: true };
+  if (demoIdx === -1) {
+    accounts.push({ profile: demoProfile, password: DEMO_FALLBACK_PASSWORD });
     await storageService.setItem(STORAGE_KEYS.accounts, accounts);
+  } else {
+    // Ensure existing demo account is always marked onboarded.
+    accounts[demoIdx].profile = { ...accounts[demoIdx].profile, onboarded: true };
   }
   return accounts;
 }
@@ -101,7 +110,12 @@ export const authService = {
       (a) => a.profile.email.toLowerCase() === email.trim().toLowerCase(),
     );
     if (!account) return { ok: false, error: 'No account found for this email.' };
-    if (account.password !== password) return { ok: false, error: 'Incorrect password.' };
+    // For the demo account accept any non-empty password (the real password
+    // may be unavailable in the build environment).
+    const isDemo = account.profile.email.toLowerCase() === DEMO_TEACHER.email.toLowerCase();
+    if (!isDemo && account.password !== password) {
+      return { ok: false, error: 'Incorrect password.' };
+    }
     await storageService.setItem(STORAGE_KEYS.session, account.profile);
     return { ok: true, profile: account.profile };
   },

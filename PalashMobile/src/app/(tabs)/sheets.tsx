@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Screen, Button, WorksheetCard, EmptyState, LoadingState } from '@/components';
+import { Screen, Button, WorksheetCard, EmptyState, LoadingState, ErrorBoundary } from '@/components';
 import { worksheetService } from '@/services';
 import type { Worksheet } from '@/types';
 
-export default function SheetsScreen() {
+function SheetsScreenContent() {
   const router = useRouter();
   const [worksheets, setWorksheets] = useState<Worksheet[] | null>(null);
 
@@ -12,11 +12,11 @@ export default function SheetsScreen() {
     useCallback(() => {
       let active = true;
       worksheetService.list().then((items) => {
-        if (active) setWorksheets(items);
+        if (active) setWorksheets(items ?? []);
+      }).catch(() => {
+        if (active) setWorksheets([]);
       });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, []),
   );
 
@@ -42,5 +42,13 @@ export default function SheetsScreen() {
         ))
       )}
     </Screen>
+  );
+}
+
+export default function SheetsScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Worksheets error">
+      <SheetsScreenContent />
+    </ErrorBoundary>
   );
 }

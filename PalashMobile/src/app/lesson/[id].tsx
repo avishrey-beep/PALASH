@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, AppText, Card, Button, StatusBadge, LoadingState, EmptyState } from '@/components';
+import { Screen, AppText, Card, Button, StatusBadge, LoadingState, EmptyState, ErrorBoundary } from '@/components';
 import { lessonService } from '@/services';
 import { colors, spacing, radius, borderWidth } from '@/theme';
 import type { Lesson } from '@/types';
@@ -33,7 +33,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function LessonDetailScreen() {
+function LessonDetailContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -44,15 +44,15 @@ export default function LessonDetailScreen() {
     useCallback(() => {
       let active = true;
       setLoading(true);
-      lessonService.get(id).then((l) => {
+      lessonService.get(id ?? '').then((l) => {
         if (active) {
           setLesson(l);
           setLoading(false);
         }
+      }).catch(() => {
+        if (active) setLoading(false);
       });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, [id]),
   );
 
@@ -156,5 +156,13 @@ export default function LessonDetailScreen() {
         </AppText>
       </Section>
     </Screen>
+  );
+}
+
+export default function LessonDetailScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Lesson error">
+      <LessonDetailContent />
+    </ErrorBoundary>
   );
 }

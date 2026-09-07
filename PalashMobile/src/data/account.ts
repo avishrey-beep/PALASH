@@ -14,7 +14,7 @@ export const DEMO_TEACHER: TeacherProfile = {
   teachingLanguage: 'hin',
   classroomLanguage: 'sat',
   preferredLanguage: 'sat',
-  onboarded: false,
+  onboarded: true,
 };
 
 export const DEMO_PASSWORD = 'palash123';

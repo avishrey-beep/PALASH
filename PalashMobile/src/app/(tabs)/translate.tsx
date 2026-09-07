@@ -14,6 +14,7 @@ import {
   TranslationCard,
   StatusBadge,
   LoadingState,
+  ErrorBoundary,
 } from '@/components';
 import { useSettings } from '@/context/SettingsContext';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -26,7 +27,7 @@ import type { TranslationResult, TranslationScreenState } from '@/types';
 /** A few real demo entries offered as tap-to-fill chips (Hindi → Santali). */
 const SAMPLE_CHIPS = SANTALI_DEMO_PHRASES.slice(0, 8).map((p) => p.hindi);
 
-export default function TranslateScreen() {
+function TranslateScreenContent() {
   const { settings, update } = useSettings();
   const haptics = useHaptics();
   const params = useLocalSearchParams<{ phrase?: string | string[] }>();
@@ -328,5 +329,13 @@ export default function TranslateScreen() {
         ) : null}
       </View>
     </Screen>
+  );
+}
+
+export default function TranslateScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Translate error">
+      <TranslateScreenContent />
+    </ErrorBoundary>
   );
 }

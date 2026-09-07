@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Screen, Button, LessonCard, EmptyState, LoadingState } from '@/components';
+import { Screen, Button, LessonCard, EmptyState, LoadingState, ErrorBoundary } from '@/components';
 import { lessonService } from '@/services';
 import type { Lesson } from '@/types';
 
-export default function LessonsScreen() {
+function LessonsScreenContent() {
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[] | null>(null);
 
@@ -12,11 +12,11 @@ export default function LessonsScreen() {
     useCallback(() => {
       let active = true;
       lessonService.list().then((items) => {
-        if (active) setLessons(items);
+        if (active) setLessons(items ?? []);
+      }).catch(() => {
+        if (active) setLessons([]);
       });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, []),
   );
 
@@ -42,5 +42,13 @@ export default function LessonsScreen() {
         ))
       )}
     </Screen>
+  );
+}
+
+export default function LessonsScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Lessons error">
+      <LessonsScreenContent />
+    </ErrorBoundary>
   );
 }

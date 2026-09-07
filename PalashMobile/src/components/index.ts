@@ -1,3 +1,4 @@
+export { ErrorBoundary } from './ErrorBoundary';
 export { AppText } from './AppText';
 export { NeoSurface } from './NeoSurface';
 export { Button } from './Button';

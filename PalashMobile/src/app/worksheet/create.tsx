@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, AppText, Input, Button, Card } from '@/components';
+import { Screen, AppText, Input, Button, Card, ErrorBoundary } from '@/components';
 import { worksheetService } from '@/services';
 import { colors, palette, spacing } from '@/theme';
 
@@ -36,7 +36,7 @@ function ChipRow<T extends string | number>({
   );
 }
 
-export default function WorksheetCreateScreen() {
+function WorksheetCreateContent() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState<string>('Mathematics');
@@ -105,5 +105,13 @@ export default function WorksheetCreateScreen() {
         </AppText>
       ) : null}
     </Screen>
+  );
+}
+
+export default function WorksheetCreateScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Create worksheet error">
+      <WorksheetCreateContent />
+    </ErrorBoundary>
   );
 }

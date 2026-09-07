@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, AppText, Card, Button, StatusBadge, LoadingState, EmptyState } from '@/components';
+import { Screen, AppText, Card, Button, StatusBadge, LoadingState, EmptyState, ErrorBoundary } from '@/components';
 import { worksheetService } from '@/services';
 import { colors, palette, spacing, radius, borderWidth } from '@/theme';
 import type { QuestionType, Worksheet } from '@/types';
@@ -13,7 +13,7 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   fill: 'Fill in the blank',
 };
 
-export default function WorksheetDetailScreen() {
+function WorksheetDetailContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [worksheet, setWorksheet] = useState<Worksheet | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,15 +23,15 @@ export default function WorksheetDetailScreen() {
     useCallback(() => {
       let active = true;
       setLoading(true);
-      worksheetService.get(id).then((w) => {
+      worksheetService.get(id ?? '').then((w) => {
         if (active) {
           setWorksheet(w);
           setLoading(false);
         }
+      }).catch(() => {
+        if (active) setLoading(false);
       });
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, [id]),
   );
 
@@ -167,5 +167,13 @@ export default function WorksheetDetailScreen() {
         ))}
       </View>
     </Screen>
+  );
+}
+
+export default function WorksheetDetailScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Worksheet error">
+      <WorksheetDetailContent />
+    </ErrorBoundary>
   );
 }

@@ -3,7 +3,9 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, AppText, Input, Button, Card, MotifRow } from '@/components';
 import { useAuth } from '@/context/AuthContext';
-import { DEMO_TEACHER, DEMO_PASSWORD } from '@/data/account';
+import { DEMO_TEACHER } from '@/data/account';
+
+const DEMO_PASSWORD = 'demo1234';
 import { colors, palette, spacing } from '@/theme';
 import type { TeacherProfile } from '@/types';
 

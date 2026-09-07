@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Screen, AppText, Card, Button, StatusBadge, LessonCard, LoadingState, EmptyState } from '@/components';
+import { Screen, AppText, Card, Button, StatusBadge, LessonCard, LoadingState, EmptyState, ErrorBoundary } from '@/components';
 import { curriculumService } from '@/services';
 import { colors, spacing } from '@/theme';
 import type { Curriculum, Lesson } from '@/types';
 
-export default function CurriculumScreen() {
+function CurriculumScreenContent() {
   const router = useRouter();
   const [curricula, setCurricula] = useState<Curriculum[] | null>(null);
   const [lessonsByCur, setLessonsByCur] = useState<Record<string, Lesson[]>>({});
@@ -15,17 +15,19 @@ export default function CurriculumScreen() {
     useCallback(() => {
       let active = true;
       (async () => {
-        const list = await curriculumService.list();
-        const entries = await Promise.all(
-          list.map(async (c) => [c.id, await curriculumService.lessonsFor(c.id)] as const),
-        );
-        if (!active) return;
-        setCurricula(list);
-        setLessonsByCur(Object.fromEntries(entries));
+        try {
+          const list = await curriculumService.list();
+          const entries = await Promise.all(
+            list.map(async (c) => [c.id, await curriculumService.lessonsFor(c.id)] as const),
+          );
+          if (!active) return;
+          setCurricula(list ?? []);
+          setLessonsByCur(Object.fromEntries(entries));
+        } catch {
+          if (active) setCurricula([]);
+        }
       })();
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }, []),
   );
 
@@ -77,5 +79,13 @@ export default function CurriculumScreen() {
         })
       )}
     </Screen>
+  );
+}
+
+export default function CurriculumScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Curriculum error">
+      <CurriculumScreenContent />
+    </ErrorBoundary>
   );
 }

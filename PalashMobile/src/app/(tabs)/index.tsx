@@ -12,6 +12,7 @@ import {
   OfflineIndicator,
   EmptyState,
   MotifRow,
+  ErrorBoundary,
 } from '@/components';
 import { useAuth } from '@/context/AuthContext';
 import { activityService } from '@/services';
@@ -29,7 +30,7 @@ const ACTIVITY_ICON: Record<ActivityKind, IconName> = {
   curriculum: 'library-outline',
 };
 
-export default function HomeScreen() {
+function HomeScreenContent() {
   const router = useRouter();
   const { profile } = useAuth();
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -144,5 +145,13 @@ export default function HomeScreen() {
         )}
       </View>
     </Screen>
+  );
+}
+
+export default function HomeScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Home screen error">
+      <HomeScreenContent />
+    </ErrorBoundary>
   );
 }

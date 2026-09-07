@@ -11,6 +11,7 @@ import {
   StatusBadge,
   LanguageSelector,
   OfflineIndicator,
+  ErrorBoundary,
 } from '@/components';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -66,7 +67,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function SettingsScreen() {
+function SettingsScreenContent() {
   const router = useRouter();
   const { profile, logout, updateProfile } = useAuth();
   const { settings, update } = useSettings();
@@ -204,5 +205,13 @@ export default function SettingsScreen() {
 
       <Button title="Log out" icon="log-out-outline" variant="danger" onPress={doLogout} fullWidth />
     </Screen>
+  );
+}
+
+export default function SettingsScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Settings error">
+      <SettingsScreenContent />
+    </ErrorBoundary>
   );
 }

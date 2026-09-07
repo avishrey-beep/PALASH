@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, AppText, Input, Button, Card } from '@/components';
+import { Screen, AppText, Input, Button, Card, ErrorBoundary } from '@/components';
 import { curriculumService } from '@/services';
 import { colors, palette, spacing } from '@/theme';
 
 const SUBJECTS = ['Mathematics', 'EVS', 'Hindi'];
 const GRADES = [1, 2, 3, 4, 5];
 
-export default function CurriculumUploadScreen() {
+function CurriculumUploadContent() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Mathematics');
@@ -96,5 +96,13 @@ export default function CurriculumUploadScreen() {
         </AppText>
       ) : null}
     </Screen>
+  );
+}
+
+export default function CurriculumUploadScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Add curriculum error">
+      <CurriculumUploadContent />
+    </ErrorBoundary>
   );
 }

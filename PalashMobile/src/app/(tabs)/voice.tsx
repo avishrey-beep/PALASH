@@ -10,6 +10,7 @@ import {
   NeoSurface,
   StatusBadge,
   TranslationCard,
+  ErrorBoundary,
 } from '@/components';
 import { useSettings } from '@/context/SettingsContext';
 import { useHaptics } from '@/hooks/useHaptics';
@@ -31,7 +32,7 @@ const STATE_LABEL: Record<VoiceState, string> = {
   ERROR: 'Something went wrong',
 };
 
-export default function VoiceScreen() {
+function VoiceScreenContent() {
   const { settings } = useSettings();
   const haptics = useHaptics();
 
@@ -306,5 +307,13 @@ export default function VoiceScreen() {
         </Card>
       ) : null}
     </Screen>
+  );
+}
+
+export default function VoiceScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Voice screen error">
+      <VoiceScreenContent />
+    </ErrorBoundary>
   );
 }
