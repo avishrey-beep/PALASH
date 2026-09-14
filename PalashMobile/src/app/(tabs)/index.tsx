@@ -38,9 +38,14 @@ function HomeScreenContent() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      activityService.list().then((items) => {
-        if (active) setActivity(items);
-      });
+      activityService
+        .list()
+        .then((items) => {
+          if (active) setActivity(items);
+        })
+        .catch(() => {
+          if (active) setActivity([]);
+        });
       return () => {
         active = false;
       };

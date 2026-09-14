@@ -1,0 +1,39 @@
+# PALASH backend dependencies (referenced by SETUP.md).
+#
+# Two groups:
+#   • CORE  -- required just to START the server and serve auth, lessons,
+#              curriculum and worksheet endpoints. These all ship prebuilt
+#              wheels (verified on CPython 3.14, Windows x64).
+#   • ML    -- the neural translation tier (IndicTrans2). Heavy, and wheels may
+#              be unavailable for the newest Python versions. OPTIONAL: without
+#              it the /translation/translate endpoint returns an empty result
+#              and the mobile app transparently falls back to its bundled
+#              offline dictionary.
+#
+# Install & run from the REPO ROOT (so the `backend` package is importable):
+#   python -m venv .venv
+#   .venv/Scripts/python -m pip install -r backend/requirements.txt
+#   .venv/Scripts/python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+#
+# The seeded SQLite DB (app.db at the repo root) already contains the demo
+# teacher: username "teacher_dumka" / "Teacher@Jharkhand2026". To rebuild it:
+#   python -m data.seed.init_db
+
+# ── CORE (required to start the server) ───────────────────────────────────────
+fastapi==0.141.1
+uvicorn==0.52.4
+sqlalchemy==2.0.52
+pydantic==2.13.5
+pydantic-settings==2.15.0
+PyJWT==2.13.0
+bcrypt==5.0.0
+email-validator==2.3.0
+python-multipart==0.0.32
+reportlab==5.0.1
+
+# ── ML translation tier (optional; heavy -- uncomment to enable Tier-3) ───────
+# transformers
+# safetensors
+# torch
+# indic-nlp-library
+# sentencepiece
