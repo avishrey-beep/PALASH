@@ -1,10 +1,12 @@
 import type { ActivityItem, TeacherProfile } from '@/types';
 
 /**
- * Demo teacher account for mock authentication (Phase 1, no backend).
+ * Demo teacher account shown on the login screen.
  *
- * These credentials are intentionally public demo values shown on the login
- * screen. Mock auth also accepts any account registered during the session.
+ * These are intentionally public demo credentials. The password matches the
+ * backend seed (data/seed/init_db.py) so the demo login works whether the app
+ * is running offline (local account store) or connected to the FastAPI backend.
+ * Offline, the demo account also accepts any non-empty password for convenience.
  */
 export const DEMO_TEACHER: TeacherProfile = {
   id: 'teacher-demo-01',
@@ -17,7 +19,8 @@ export const DEMO_TEACHER: TeacherProfile = {
   onboarded: true,
 };
 
-export const DEMO_PASSWORD = 'palash123';
+/** Single source of truth for the demo password (matches the backend seed). */
+export const DEMO_PASSWORD = 'Teacher@Jharkhand2026';
 
 /** Seed "recent activity" shown on the home dashboard for the demo account. */
 export const SEED_ACTIVITY: ActivityItem[] = [

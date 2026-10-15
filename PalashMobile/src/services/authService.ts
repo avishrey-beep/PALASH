@@ -1,10 +1,10 @@
 import { storageService, STORAGE_KEYS } from './storageService';
-import { DEMO_TEACHER } from '@/data/account';
+import { DEMO_TEACHER, DEMO_PASSWORD } from '@/data/account';
 import { authApi, tokenStore, ApiError } from './apiClient';
 import type { Credentials, RegistrationInput, TeacherProfile } from '@/types';
 
-// Fallback password for the demo account when DEMO_PASSWORD is unavailable.
-const DEMO_FALLBACK_PASSWORD = 'demo1234';
+// Fallback password for the demo account (single source of truth in account.ts).
+const DEMO_FALLBACK_PASSWORD = DEMO_PASSWORD;
 
 /**
  * Authentication service.

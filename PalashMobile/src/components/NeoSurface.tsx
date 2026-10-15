@@ -61,8 +61,10 @@ export function NeoSurface({
             borderColor,
             borderWidth,
             borderRadius: radius,
-            transform: pressed ? [{ translateX: x }, { translateY: y }] : undefined,
           },
+          // Only add a transform when pressed — avoids emitting `transform: undefined`,
+          // which some web style pipelines mishandle.
+          pressed ? { transform: [{ translateX: x }, { translateY: y }] } : null,
           contentStyle,
         ]}
       >

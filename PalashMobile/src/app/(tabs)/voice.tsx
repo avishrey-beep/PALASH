@@ -10,31 +10,34 @@ import {
   NeoSurface,
   StatusBadge,
   TranslationCard,
-  ErrorBoundary,
 } from '@/components';
 import { useSettings } from '@/context/SettingsContext';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { voiceService, translationService, offlineCacheService, activityService } from '@/services';
 import { SANTALI_DEMO_PHRASES, normalizePhrase } from '@/data/phrases';
 import { languageName } from '@/data/languages';
-import { colors, palette, spacing, radius, borderWidth } from '@/theme';
+import { colors, palette, spacing, radius } from '@/theme';
 import type { TranslationResult, VoiceState } from '@/types';
 
-const DEMO_PHRASES = SANTALI_DEMO_PHRASES.slice(0, 8).map((p) => p.hindi);
+/** Short, high-hit-rate phrases (incl. single-word numbers) that reliably
+ *  match the offline dictionary — ideal to speak in the live web demo. */
+const SUGGESTED = [
+  'बैठ जाओ',
+  'खड़े हो जाओ',
+  'बहुत अच्छा',
+  'एक',
+  'दो',
+  'तीन',
+  'यहाँ देखो',
+  'हाथ ऊपर करो',
+].filter((h) => SANTALI_DEMO_PHRASES.some((p) => p.hindi === h));
 
-const STATE_LABEL: Record<VoiceState, string> = {
-  READY: 'Pick a phrase, then tap to speak',
-  LISTENING: 'Listening… (demo)',
-  PROCESSING: 'Recognising…',
-  TRANSLATING: 'Translating…',
-  SPEAKING: 'Playing audio…',
-  COMPLETE: 'Done',
-  ERROR: 'Something went wrong',
-};
-
-function VoiceScreenContent() {
+export default function VoiceScreen() {
   const { settings } = useSettings();
   const haptics = useHaptics();
+  const sr = useSpeechRecognition();
+  const liveMode = sr.supported; // real browser speech recognition (web)
 
   const [selected, setSelected] = useState<string | null>(null);
   const [state, setState] = useState<VoiceState>('READY');
@@ -45,10 +48,12 @@ function VoiceScreenContent() {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const pulse = useRef(new Animated.Value(1)).current;
-  const busy = state === 'LISTENING' || state === 'PROCESSING' || state === 'TRANSLATING';
+  const listening = state === 'LISTENING';
+  const translating = state === 'PROCESSING' || state === 'TRANSLATING';
 
+  // Pulsing mic while listening.
   useEffect(() => {
-    if (state === 'LISTENING') {
+    if (listening) {
       const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulse, { toValue: 1.09, duration: 480, useNativeDriver: true }),
@@ -59,7 +64,7 @@ function VoiceScreenContent() {
       return () => loop.stop();
     }
     pulse.setValue(1);
-  }, [state, pulse]);
+  }, [listening, pulse]);
 
   useEffect(() => {
     return () => {
@@ -67,66 +72,123 @@ function VoiceScreenContent() {
     };
   }, []);
 
-  const reset = useCallback(() => {
-    setRecognized(null);
+  const clearOutput = useCallback(() => {
     setResult(null);
+    setRecognized(null);
     setSaved(false);
     setSavedId(null);
     Speech.stop().catch(() => {});
     setIsSpeaking(false);
   }, []);
 
-  const pickPhrase = (phrase: string) => {
-    setSelected(phrase);
-    reset();
-    setState('READY');
-  };
-
-  const handleListen = useCallback(async () => {
-    if (!selected || busy) return;
-    reset();
-    haptics.tap();
-
-    // 1. "Listen" + recognise (demo: echoes the chosen phrase, no real ASR).
-    setState('LISTENING');
-    const rec = await voiceService.recognize(selected);
-    if (!rec.recognizedText) {
-      setState('ERROR');
-      haptics.warn();
-      return;
-    }
-    setRecognized(rec.recognizedText);
-
-    // 2. Translate the recognised Hindi via the same honest pipeline.
-    setState('TRANSLATING');
-    const res = await translationService.translate({
-      text: rec.recognizedText,
-      sourceLang: 'hin',
-      targetLang: 'sat',
-    });
-    setResult(res);
-
-    if (res.outcome === 'SUCCESS' || res.outcome === 'CACHED') {
-      setState('COMPLETE');
-      haptics.success();
-      const savedList = await offlineCacheService.listSaved();
-      const match = savedList.find(
-        (s) =>
-          normalizePhrase(s.sourceText) === normalizePhrase(res.sourceText) &&
-          s.targetLang === res.targetLang,
-      );
-      setSaved(!!match);
-      setSavedId(match?.id ?? null);
-      await activityService.log({
-        kind: 'voice',
-        title: res.sourceText,
-        subtitle: 'Demo voice · Hindi → Santali',
+  // Shared translation step: recognised Hindi -> Santali via the honest pipeline.
+  const runTranslation = useCallback(
+    async (hindi: string) => {
+      setState('TRANSLATING');
+      const res = await translationService.translate({
+        text: hindi,
+        sourceLang: 'hin',
+        targetLang: 'sat',
       });
-    } else {
-      setState('ERROR');
-      haptics.warn();
+      setResult(res);
+
+      if (res.outcome === 'SUCCESS' || res.outcome === 'CACHED') {
+        setState('COMPLETE');
+        haptics.success();
+        const savedList = await offlineCacheService.listSaved();
+        const match = savedList.find(
+          (s) =>
+            normalizePhrase(s.sourceText) === normalizePhrase(res.sourceText) &&
+            s.targetLang === res.targetLang,
+        );
+        setSaved(!!match);
+        setSavedId(match?.id ?? null);
+        await activityService.log({
+          kind: 'voice',
+          title: res.sourceText,
+          subtitle: liveMode ? 'Live voice · Hindi → Santali' : 'Demo voice · Hindi → Santali',
+        });
+      } else {
+        setState('ERROR');
+        haptics.warn();
+      }
+    },
+    [haptics, liveMode],
+  );
+
+  // ── Live mode (web): react to real recognition status/results ──────────────
+  useEffect(() => {
+    if (!liveMode) return;
+    if (sr.status === 'listening') setState('LISTENING');
+    else if (sr.status === 'error') setState('ERROR');
+  }, [liveMode, sr.status]);
+
+  const lastHandled = useRef('');
+  useEffect(() => {
+    if (!liveMode) return;
+    const text = sr.transcript.trim();
+    if (text && text !== lastHandled.current) {
+      lastHandled.current = text;
+      setRecognized(text);
+      void runTranslation(text);
     }
-  }, [selected, busy, reset, haptics]);
+  }, [liveMode, sr.transcript, runTranslation]);
+
+  // ── Demo mode (native/Expo Go): simulate recognition of a chosen phrase ─────
+  const handleDemoListen = useCallback(
+    async (phraseArg?: string) => {
+      if (translating) return;
+      // Fall back to the current selection, then the first suggestion, so the
+      // mic always does something even before a phrase is picked.
+      const phrase = phraseArg ?? selected ?? SUGGESTED[0];
+      if (!phrase) return;
+      setSelected(phrase);
+      clearOutput();
+      haptics.tap();
+
+      setState('LISTENING');
+      const rec = await voiceService.recognize(phrase);
+      if (!rec.recognizedText) {
+        setState('ERROR');
+        haptics.warn();
+        return;
+      }
+      setRecognized(rec.recognizedText);
+      await runTranslation(rec.recognizedText);
+    },
+    [selected, translating, clearOutput, haptics, runTranslation],
+  );
+
+  const onMicPress = useCallback(() => {
+    if (liveMode) {
+      if (listening) {
+        sr.stop();
+        return;
+      }
+      lastHandled.current = '';
+      clearOutput();
+      sr.reset();
+      haptics.tap();
+      setState('LISTENING');
+      sr.start('hi-IN');
+    } else {
+      void handleDemoListen();
+    }
+  }, [liveMode, listening, sr, clearOutput, haptics, handleDemoListen]);
+
+  const pickPhrase = (phrase: string) => {
+    if (liveMode) {
+      // No mic? Tap a suggestion to run the same translation pipeline.
+      clearOutput();
+      setSelected(phrase);
+      setRecognized(phrase);
+      lastHandled.current = phrase;
+      void runTranslation(phrase);
+    } else {
+      // One tap = simulate speaking it + translate, so the phone always responds.
+      void handleDemoListen(phrase);
+    }
+  };
 
   const onCopy = async () => {
     if (!result?.translatedText) return;
@@ -179,30 +241,58 @@ function VoiceScreenContent() {
   };
 
   const onAgain = () => {
-    reset();
+    clearOutput();
+    lastHandled.current = '';
     setState('READY');
   };
 
-  const micColor = state === 'LISTENING' ? colors.accent : busy ? colors.textMuted : colors.primary;
+  const micColor = listening ? colors.accent : translating ? colors.textMuted : colors.primary;
+  // The mic is always tappable except while a translation is in flight. In demo
+  // mode a tap with nothing selected falls back to the first suggested phrase
+  // (see handleDemoListen), so the button never sits inert on the phone.
+  const micDisabled = translating;
+
+  const hint = (() => {
+    if (translating) return 'Translating…';
+    if (state === 'SPEAKING') return 'Playing audio…';
+    if (listening) return liveMode ? 'Listening… speak in Hindi, then pause' : 'Listening… (demo)';
+    if (state === 'ERROR') return sr.error ?? 'Something went wrong';
+    if (state === 'COMPLETE') return 'Done';
+    return liveMode ? 'Tap the mic and speak a Hindi phrase' : 'Tap a phrase — or the mic — to hear it';
+  })();
 
   return (
     <Screen title="Voice" subtitle="Speak a phrase, hear the mother tongue">
-      {/* Honest demo-mode banner */}
-      <Card backgroundColor={palette.sand} shadowSize="sm" style={{ marginBottom: spacing.xl }}>
+      {/* Mode banner — honest about what is real on this platform */}
+      <Card
+        backgroundColor={liveMode ? palette.forest : palette.sand}
+        shadowSize="sm"
+        style={{ marginBottom: spacing.xl }}
+      >
         <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }}>
-          <Ionicons name="information-circle-outline" size={20} color={colors.text} />
+          <Ionicons
+            name={liveMode ? 'mic-circle-outline' : 'information-circle-outline'}
+            size={20}
+            color={liveMode ? colors.white : colors.text}
+          />
           <View style={{ flex: 1 }}>
-            <AppText variant="bodyStrong">Demo Voice Mode</AppText>
-            <AppText variant="bodySmall" color={colors.textMuted} style={{ marginTop: spacing.xxs }}>
-              This is not live speech recognition. Choose a phrase below to simulate speaking it —
-              PALASH does not transcribe arbitrary audio yet, and no child voice is recorded or
-              stored.
+            <AppText variant="bodyStrong" color={liveMode ? colors.white : colors.text}>
+              {liveMode ? 'Live voice recognition' : 'Demo Voice Mode'}
+            </AppText>
+            <AppText
+              variant="bodySmall"
+              color={liveMode ? colors.white : colors.textMuted}
+              style={{ marginTop: spacing.xxs }}
+            >
+              {liveMode
+                ? "Real speech-to-text via your browser (needs internet). Speak a Hindi phrase and it's translated to Santali. No audio is stored."
+                : 'This is not live speech recognition. Choose a phrase below to simulate speaking it — real on-device recognition needs a native build, and no child voice is recorded or stored.'}
             </AppText>
           </View>
         </View>
       </Card>
 
-      {/* Language direction (fixed for the voice demo) */}
+      {/* Language direction (fixed: Hindi → Santali) */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg }}>
         <StatusBadge label={languageName('hin')} tone="neutral" />
         <Ionicons name="arrow-forward" size={18} color={colors.textMuted} />
@@ -213,35 +303,35 @@ function VoiceScreenContent() {
       <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
         <Animated.View style={{ transform: [{ scale: pulse }] }}>
           <Pressable
-            onPress={() => void handleListen()}
-            disabled={!selected || busy}
+            onPress={onMicPress}
+            disabled={micDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Tap to speak the selected phrase"
-            style={{ opacity: !selected ? 0.5 : 1 }}
+            accessibilityLabel={listening ? 'Stop recording' : 'Tap to speak'}
+            style={{ opacity: micDisabled ? 0.5 : 1 }}
           >
             {({ pressed }) => (
               <NeoSurface shadowSize="xl" radius={radius.pill} backgroundColor={micColor} pressed={pressed}>
                 <View style={{ width: 128, height: 128, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name={state === 'LISTENING' ? 'radio' : 'mic'} size={52} color={colors.white} />
+                  <Ionicons name={listening ? 'radio' : 'mic'} size={52} color={colors.white} />
                 </View>
               </NeoSurface>
             )}
           </Pressable>
         </Animated.View>
         <AppText variant="bodyStrong" color={colors.textMuted} center style={{ marginTop: spacing.lg }}>
-          {STATE_LABEL[state]}
+          {hint}
         </AppText>
       </View>
 
-      {/* Phrase picker */}
+      {/* Phrase suggestions / picker */}
       <AppText variant="label" color={colors.textMuted} style={{ marginBottom: spacing.sm }}>
-        CHOOSE A PHRASE TO SPEAK
+        {liveMode ? 'TRY SAYING ONE OF THESE (OR TAP)' : 'CHOOSE A PHRASE TO SPEAK'}
       </AppText>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xl }}>
-        {DEMO_PHRASES.map((phrase) => {
+        {SUGGESTED.map((phrase) => {
           const active = selected === phrase;
           return (
-            <Pressable key={phrase} onPress={() => pickPhrase(phrase)} disabled={busy}>
+            <Pressable key={phrase} onPress={() => pickPhrase(phrase)} disabled={translating || listening}>
               {({ pressed }) => (
                 <NeoSurface
                   shadowSize="sm"
@@ -260,11 +350,23 @@ function VoiceScreenContent() {
         })}
       </View>
 
-      {/* Recognised text (demo) */}
-      {recognized && (state === 'TRANSLATING' || state === 'COMPLETE' || state === 'SPEAKING') ? (
+      {/* Live interim transcript while speaking */}
+      {liveMode && listening ? (
         <Card backgroundColor={colors.surfaceMuted} shadowSize="sm" style={{ marginBottom: spacing.md }}>
           <AppText variant="label" color={colors.textMuted}>
-            HEARD (SIMULATED)
+            HEARING…
+          </AppText>
+          <AppText variant="title" style={{ marginTop: spacing.xxs }}>
+            {sr.interim || '…'}
+          </AppText>
+        </Card>
+      ) : null}
+
+      {/* Recognised text */}
+      {recognized && !listening && (translating || state === 'COMPLETE' || state === 'SPEAKING') ? (
+        <Card backgroundColor={colors.surfaceMuted} shadowSize="sm" style={{ marginBottom: spacing.md }}>
+          <AppText variant="label" color={colors.textMuted}>
+            {liveMode ? 'HEARD' : 'HEARD (SIMULATED)'}
           </AppText>
           <AppText variant="title" style={{ marginTop: spacing.xxs }}>
             {recognized}
@@ -291,29 +393,22 @@ function VoiceScreenContent() {
         </>
       ) : null}
 
+      {/* Errors */}
       {state === 'ERROR' ? (
         <Card backgroundColor={colors.surface} borderColor={colors.danger} shadowSize="md">
           <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
             <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong" color={colors.danger}>
-                {result?.note ? 'Not in the demo dictionary' : 'Voice demo error'}
+                {sr.error ? 'Voice input problem' : result?.note ? 'Not in the demo dictionary' : 'Voice demo error'}
               </AppText>
               <AppText variant="bodySmall" color={colors.textMuted} style={{ marginTop: spacing.xxs }}>
-                {result?.note ?? 'Please pick a phrase and try again.'}
+                {sr.error ?? result?.note ?? 'Please pick a phrase and try again.'}
               </AppText>
             </View>
           </View>
         </Card>
       ) : null}
     </Screen>
-  );
-}
-
-export default function VoiceScreen() {
-  return (
-    <ErrorBoundary fallbackTitle="Voice screen error">
-      <VoiceScreenContent />
-    </ErrorBoundary>
   );
 }

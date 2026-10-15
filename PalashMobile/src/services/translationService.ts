@@ -65,13 +65,28 @@ export const translationService = {
     try {
       const result = await activeProvider.translate({ ...request, text });
 
-      // If the backend returned a network error, fall back to the mock provider.
-      if (result.errorCode === 'NETWORK_ERROR' && activeProvider.id !== mockTranslationProvider.id) {
+      // The backend is an ENHANCEMENT layer over the reliable offline
+      // dictionary -- never a downgrade. If it is unreachable (NETWORK_ERROR),
+      // errored (BACKEND_ERROR), or simply has no answer for this phrase
+      // (UNAVAILABLE, e.g. the neural tier isn't installed), fall back to the
+      // bundled human-verified Santali dictionary so the demo phrases always
+      // work -- online or off.
+      const backendCameUpEmpty =
+        activeProvider.id !== mockTranslationProvider.id &&
+        (result.errorCode === 'NETWORK_ERROR' ||
+          result.errorCode === 'BACKEND_ERROR' ||
+          result.outcome === 'UNAVAILABLE');
+
+      if (backendCameUpEmpty) {
         const fallback = await mockTranslationProvider.translate({ ...request, text });
         if (fallback.outcome === 'SUCCESS') {
           await offlineCacheService.cache(fallback);
+          return fallback;
         }
-        return fallback;
+        // The offline dictionary has no entry either. Prefer the local
+        // "not in the dictionary" message when we never reached the server;
+        // otherwise surface the backend's own note.
+        return result.errorCode === 'NETWORK_ERROR' ? fallback : result;
       }
 
       if (result.outcome === 'SUCCESS') {

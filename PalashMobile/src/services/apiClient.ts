@@ -14,8 +14,19 @@
 // device, use your machine's LAN IP (e.g. http://192.168.1.x:8000).
 // For Android emulator use http://10.0.2.2:8000.
 // For iOS simulator use http://localhost:8000.
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+//
+// IMPORTANT (offline-first): the backend is OPT-IN. Unless you explicitly set
+// EXPO_PUBLIC_API_URL, the app runs fully offline against its bundled local
+// data and never waits on a network call. This is what makes login,
+// translation, lessons, etc. feel instant in Expo Go with no server running.
+// A bare `localhost` default would make every device request stall until it
+// times out (on a phone, `localhost` is the phone itself, not your machine).
+const CONFIGURED_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim();
+
+/** True only when a backend URL was explicitly provided. */
+export const BACKEND_ENABLED = !!CONFIGURED_API_URL;
+
+export const API_BASE_URL = CONFIGURED_API_URL ?? 'http://localhost:8000';
 
 const API_V1 = `${API_BASE_URL}/api/v1`;
 
@@ -54,7 +65,7 @@ export const tokenStore = {
   },
 };
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 4000;
 
 async function fetchWithTimeout(
   url: string,
@@ -78,6 +89,12 @@ async function request<T>(
   options: RequestInit = {},
   authenticated = true,
 ): Promise<T> {
+  // Offline-first: when no backend URL is configured, fail fast as a network
+  // error so every caller falls back to local data instantly (no timeout wait).
+  if (!BACKEND_ENABLED) {
+    throw new ApiError(0, 'Offline mode: backend not configured', true);
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
